@@ -6,7 +6,7 @@
                 "${workspaceFolder}/**",
                 "C:/msys64/mingw64/include",
                 "C:/Users/somay/Desktop/sources/include",
-                "C:/Users/somay/Desktop/sources/Debug",
+                "C:/Users/somay/Desktop/sources/Debug"
                 
             ],
             "defines": [
