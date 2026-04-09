@@ -1,5 +1,6 @@
 #define CL_TARGET_OPENCL_VERSION 300
 
+#include"fileReader.h"
 #include <stdio.h>
 #include <iostream>
 #include <CL/cl.h>
@@ -44,7 +45,7 @@ int main(){
         return 1;
     }
 
-    //program
+    
     
 
 
