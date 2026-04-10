@@ -7,7 +7,6 @@
 
 
 std::string readFile(std::string fileName){
-
     std::ifstream file;
     std::string code;
     file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
