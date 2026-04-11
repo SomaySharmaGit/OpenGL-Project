@@ -1,0 +1,1 @@
+__kernel void print(__global float* input)
