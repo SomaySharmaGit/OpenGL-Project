@@ -3,5 +3,10 @@ out vec4 FragColor;
 
 void main()
 {
+    float distance = pow((gl_PointCoord.x - 0.5),2) + pow((gl_PointCoord.y - 0.5),2);
+    if(sqrt(distance) > 0.5){
+        discard;
+    }
+
     FragColor = vec4(1.0f, 0.75f, 0.75f, 1.0f);
 }

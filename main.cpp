@@ -86,6 +86,8 @@ int main(){
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+
 
     glFinish(); 
     
@@ -103,7 +105,7 @@ int main(){
     
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_POINTS, 0, 3);
 
 
     
@@ -226,7 +228,7 @@ int compileShaders()
     if(!success)
     {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR: Failed to compile vertex shader!\n" << infoLog << std::endl;
+        std::cout << "ERROR: Failed to compile fragment shader!\n" << infoLog << std::endl;
         return 1;
     }
 
