@@ -21,12 +21,13 @@ cl_device_id device_id;
 cl_context context;
 cl_command_queue commands;
 cl_program program;
+cl_kernel kernel;
 
 cl_mem sharedMemory;
 
 GLFWwindow* window;
 
-int pointCounter = 30;
+int pointCounter = 4;
 
 unsigned int VBO;
 unsigned int VAO;
@@ -35,6 +36,7 @@ const char *vertexShaderText;
 unsigned int vertexShader;
 const char *fragmentShaderText;
 unsigned int fragmentShader;
+const char *kernelText;
 
 unsigned int shaderProgram;
 
@@ -46,6 +48,7 @@ char infoLog[512];
 
 std::string vSource;
 std::string fSource;
+std::string kernelSource;
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -77,7 +80,7 @@ int main(){
         vertices[3 * i] = 2 * (float)std::rand()/RAND_MAX - 1;
         vertices[3 * i + 1] =2 * (float)std::rand()/RAND_MAX - 1;
         std::cout << "The positions are as follows: x| " << vertices[3 * i] << " y| " << vertices[3 * i + 1] << std::endl; 
-    }
+    } 
 
 
     //Create Buffer for Vertex Data
@@ -103,6 +106,38 @@ int main(){
     {
         std::cout << "ERROR: Failed to create shared memory!" << std::endl;
     }
+
+    err = clEnqueueAcquireGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to aquire GLObjects!\n");
+    }
+
+    err = 0;
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to set kernel arg!\n");
+    }
+
+    const size_t global = pointCounter; 
+    const size_t local = 2;
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to enqueue nd-range kernel!\n");
+    }
+
+    clFinish(commands);
+
+    err = clEnqueueReleaseGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to relase gl objects!\n");
+    }
+
+
+
 
     while(!glfwWindowShouldClose(window))
     {
@@ -202,6 +237,35 @@ int initOpenCL()
         printf("Error: Failed to create command queue!\n");
         return 1;
     }
+
+    kernelSource = readFile("C:/Users/somay/Desktop/OpenGL Project/kernel.txt");
+    kernelText = kernelSource.c_str();
+
+    program = clCreateProgramWithSource(context, 1, (const char **) &kernelText, NULL, &err);
+    if(!program)
+    {
+        printf("Error: Failed to create a program!\n");
+    }
+
+    err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        size_t len;
+        char buffer[2048];
+
+        printf("Error: Failed to builld program!\n");
+        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len );
+        printf("%s\n", buffer);
+        return 1;
+    }
+
+    kernel = clCreateKernel(program, "print", &err);
+    if(!kernel || err != CL_SUCCESS)
+    {
+        printf("Error: Failed to create kernel!\n");
+        return 1;
+    }
+
 
 
     return 0;
