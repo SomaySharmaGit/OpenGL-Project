@@ -26,6 +26,8 @@ cl_mem sharedMemory;
 
 GLFWwindow* window;
 
+int pointCounter = 30;
+
 unsigned int VBO;
 unsigned int VAO;
 
@@ -69,13 +71,17 @@ int main(){
         return 1;
     }
 
+    float vertices[pointCounter*3] = {};
+
+    for(int i = 0; i < pointCounter; i++){
+        vertices[3 * i] = 2 * (float)std::rand()/RAND_MAX - 1;
+        vertices[3 * i + 1] =2 * (float)std::rand()/RAND_MAX - 1;
+        std::cout << "The positions are as follows: x| " << vertices[3 * i] << " y| " << vertices[3 * i + 1] << std::endl; 
+    }
+
 
     //Create Buffer for Vertex Data
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f
-    };
+
 
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
@@ -105,7 +111,7 @@ int main(){
     
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, 3);
+        glDrawArrays(GL_POINTS, 0, pointCounter);
 
 
     
