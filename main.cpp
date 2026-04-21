@@ -12,7 +12,7 @@
 #include <windows.h>
 
 
-const int WIDTH = 800;
+const int WIDTH = 600;
 const int HEIGHT = 600;
 
 cl_platform_id platform_id;
@@ -24,10 +24,14 @@ cl_program program;
 cl_kernel kernel;
 
 cl_mem sharedMemory;
+cl_mem density;
 
 GLFWwindow* window;
 
-int pointCounter = 4;
+const int limit = 8;
+const int multiplier = 30;
+const int particles = limit * multiplier;
+
 
 unsigned int VBO;
 unsigned int VAO;
@@ -56,6 +60,7 @@ int initOpenGL();
 int initOpenCL();
 int compileShaders();
 void cleanUp();
+int kernel1();
 
 int main(){        
 
@@ -74,11 +79,11 @@ int main(){
         return 1;
     }
 
-    float vertices[pointCounter*3] = {};
+    float vertices[particles*3] = {};
 
-    for(int i = 0; i < pointCounter; i++){
+    for(int i = 0; i < particles; i++){
         vertices[3 * i] = 2 * (float)std::rand()/RAND_MAX - 1;
-        vertices[3 * i + 1] =2 * (float)std::rand()/RAND_MAX - 1;
+        vertices[3 * i + 1] = 2 * (float)std::rand()/RAND_MAX - 1;
         std::cout << "The positions are as follows: x| " << vertices[3 * i] << " y| " << vertices[3 * i + 1] << std::endl; 
     } 
 
@@ -107,46 +112,30 @@ int main(){
         std::cout << "ERROR: Failed to create shared memory!" << std::endl;
     }
 
-    err = clEnqueueAcquireGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
-    if(err != CL_SUCCESS)
+    density = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(vertices)/3, NULL, NULL);
+    if(!density)
     {
-        printf("ERROR: Failed to aquire GLObjects!\n");
+        std::cout << "ERROR: Failed to create density buffer!" << std::endl;
     }
 
-    err = 0;
-    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
-    if(err != CL_SUCCESS)
-    {
-        printf("ERROR: Failed to set kernel arg!\n");
-    }
-
-    const size_t global = pointCounter; 
-    const size_t local = 2;
-    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-    if(err != CL_SUCCESS)
-    {
-        printf("ERROR: Failed to enqueue nd-range kernel!\n");
-    }
-
-    clFinish(commands);
-
-    err = clEnqueueReleaseGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
-    if(err != CL_SUCCESS)
-    {
-        printf("ERROR: Failed to relase gl objects!\n");
-    }
+    
 
 
 
 
     while(!glfwWindowShouldClose(window))
     {
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        if(kernel1() != 0)
+        {
+            std::cout << "ERROR: Failed to execute kernel1!\n" << std::endl;
+        }
     
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, pointCounter);
+        glDrawArrays(GL_POINTS, 0, particles);
 
 
     
@@ -154,18 +143,25 @@ int main(){
         glfwPollEvents();
     }
 
+    float results[particles];
+
+    err = clEnqueueReadBuffer(commands, density, CL_TRUE, 0, sizeof(float) * particles, results, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        std::cout << "ERROR: Failed to read density!\n";
+        return 1;
+    }
+
+    for(int i = 0; i < particles; i++)
+    {
+        printf("The densities are as follows: %f\n", results[i]);
+    }
+
     cleanUp();
 
     return 0;
-
-
     //clReleaseKernel
     //clReleaseProgram
- 
-
-
-    
-
 }
 
 
@@ -197,7 +193,7 @@ int initOpenGL()
         return 1;   
     }
 
-    glViewport(0,0,800,600);
+    glViewport(0,0,600,600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 
@@ -259,12 +255,7 @@ int initOpenCL()
         return 1;
     }
 
-    kernel = clCreateKernel(program, "print", &err);
-    if(!kernel || err != CL_SUCCESS)
-    {
-        printf("Error: Failed to create kernel!\n");
-        return 1;
-    }
+    
 
 
 
@@ -332,4 +323,53 @@ void cleanUp()
     glDeleteVertexArrays(1, &VAO);
     glDeleteProgram(shaderProgram);
     glfwTerminate();
+}
+
+int kernel1()
+{
+
+    kernel = clCreateKernel(program, "print", &err);
+    if(!kernel || err != CL_SUCCESS)
+    {
+        printf("Error: Failed to create kernel!\n");
+        return 1;
+    }
+
+    err = clEnqueueAcquireGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to aquire GLObjects!\n");
+        return 1;
+    }
+
+
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
+    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &density);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_int), &particles);
+
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to set kernel arg!\n");
+         return 1;
+    }
+
+    const size_t global = particles;
+    const size_t local = limit;
+
+
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to enqueue nd-range kernel!\n");
+        return 1;
+    }
+    clFinish(commands);
+
+    err = clEnqueueReleaseGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to relase gl objects!\n");
+        return 1;
+    }
+    
 }

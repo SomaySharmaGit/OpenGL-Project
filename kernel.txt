@@ -1,6 +1,37 @@
-__kernel void print(__global float* input)
+__kernel void print(__global float* input, __global float*density, int particles)
 {
     int i = get_global_id(0);
-    printf("X position of %f, Y position of %f, Global id of %d\n", input[i*3], input[i*3 + 1], i);
+    float x = input[i * 3];
+    float y = input[i * 3 + 1];
+
+    density[i] = 0;
+
+    float h = 0.2;
+    float hSquared = pow(h,2);
+    float hNinth = pow(h,9);
+
+    float sum = 0;
+
+    for(int j = 0; j < particles; j++)
+    {
+        float xNought = input[j * 3];
+        float yNought = input[j * 3 + 1];
+        float rSquared = pow(x - xNought,2) + pow(y - yNought, 2);
+  
+        if(rSquared > 0 && rSquared < hSquared)
+        {   
+            float term = pow(hSquared - rSquared, 3);
+            sum = sum + (315 * term)/(M_PI * 64 * hNinth);
+        }
+    }
+
+
+    density[i] = sum;
+
+    float primeX = (x * cos(0.01)) - (y * sin(0.01));
+    float primeY = (x * sin(0.01)) + (y * cos(0.01));
+
+    
+
     
 }
