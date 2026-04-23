@@ -371,5 +371,7 @@ int kernel1()
         printf("ERROR: Failed to relase gl objects!\n");
         return 1;
     }
+
+    return 0;
     
 }

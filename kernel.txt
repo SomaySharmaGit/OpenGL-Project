@@ -6,7 +6,7 @@ __kernel void print(__global float* input, __global float*density, int particles
 
     density[i] = 0;
 
-    float h = 0.2;
+    float h = 1;
     float hSquared = pow(h,2);
     float hNinth = pow(h,9);
 
