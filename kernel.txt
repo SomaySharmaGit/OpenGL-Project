@@ -39,7 +39,7 @@ __kernel void pressure(__global float3* positions, __global float* density, int 
     float gasConstant = 1.0f;
     float h = 0.2;
     float h2 = h * h;
-    float epsilon = 1.0f/100000.0f;
+    float epsilon = 1.0f/1000.0f;
     float c = 10/(M_PI * h2 * h);
 
 
@@ -81,4 +81,22 @@ __kernel void pressure(__global float3* positions, __global float* density, int 
 
 }
 
-__kernel void updatePositions(__global* float positions, __global* float forces, __global* float velocities)
+__kernel void updatePositions(__global float3* positions, __global float2* forces, __global float2* velocities)
+{
+    int id = get_global_id(0);
+    float delT = 0.02;
+    
+    float2 force = forces[id];
+    float2 velocity = velocities[id];
+    float3 position = positions[id];
+
+    velocity.x = velocity.x + force.x * delT;
+    velocity.y = velocity.y + force.y * delT;
+
+    position.x = position.x + velocity.x * delT;
+    position.y = position.y + velocity.y * delT;
+
+    positions[id] = position;
+    velocities[id] = velocity;
+
+}

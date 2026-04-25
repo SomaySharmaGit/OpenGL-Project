@@ -64,6 +64,7 @@ int compileShaders();
 void cleanUp();
 int kernel1();
 int kernel2();
+int kernel3();
 
 int main(){        
 
@@ -151,6 +152,14 @@ int main(){
             std::cout << "ERROR: Failed to execute kernel2!\n" << std::endl;
             return 1;
         }
+        
+        if(kernel3() != 0)
+        {
+            std::cout << "ERROR: Failed to execute kernel3!\n" << std::endl;
+            return 1;
+        }
+
+
 
 
         glUseProgram(shaderProgram);
@@ -174,7 +183,7 @@ int main(){
 
     for(int i = 0; i < particles; i++)
     {
-        printf("Force: x: %f && y: %f\n", results[i].s[0], results[i].s[1]);
+        //printf("Force: x: %f && y: %f\n", results[i].s[0], results[i].s[1]);
     }
 
 
@@ -444,5 +453,54 @@ int kernel2()
     }
 
     return 0;
+
+}
+
+int kernel3()
+{
+    kernel = clCreateKernel(program, "updatePositions", &err);
+    if(!kernel || err != CL_SUCCESS)
+    {
+        printf("Error: Failed to create kernel!\n");
+        return 1;
+    }
+
+    err = clEnqueueAcquireGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to aquire GLObjects!\n");
+        return 1;
+    }
+
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
+    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &forces);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &velocities);
+
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to set kernel arg!\n");
+        return 1;
+    }
+
+    const size_t global = particles;
+    const size_t local = limit;
+
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to enqueue nd-range kernel!\n");
+        return 1;
+    }
+    clFinish(commands);
+
+    err = clEnqueueReleaseGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to relase gl objects!\n");
+        return 1;
+    }
+
+    return 0;
+
 
 }
