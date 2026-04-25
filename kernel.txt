@@ -1,37 +1,84 @@
-__kernel void print(__global float* input, __global float*density, int particles)
+__kernel void density(__global float* positions, __global float*density, int particles)
 {
-    int i = get_global_id(0);
-    float x = input[i * 3];
-    float y = input[i * 3 + 1];
 
-    density[i] = 0;
+    int id = get_global_id(0);
+    float h = 0.2f;
 
-    float h = 1;
-    float hSquared = pow(h,2);
-    float hNinth = pow(h,9);
 
-    float sum = 0;
+    float2 positionI = positions[id];
+
+    float localDensity = 0.0f;
+
+    float h2 = pow(h,2);
+    float h8 = h2 * h2 * h2 * h2;
+    float c = 4.0f / (M_PI * h8);
 
     for(int j = 0; j < particles; j++)
     {
-        float xNought = input[j * 3];
-        float yNought = input[j * 3 + 1];
-        float rSquared = pow(x - xNought,2) + pow(y - yNought, 2);
-  
-        if(rSquared > 0 && rSquared < hSquared)
-        {   
-            float term = pow(hSquared - rSquared, 3);
-            sum = sum + (315 * term)/(M_PI * 64 * hNinth);
+        float2 positionJ = positions[j];
+        float delX = positionI.x - positionJ.x;
+        float delY = positionI.y - positionJ.y;
+        float r2 = (delX * delX) + (delY * delY);
+
+        if( r2 <= h2)
+        {
+            float diff = h2 - r2;
+            localDensity = localDensity +  c * (diff * diff * diff);
         }
     }
 
-
-    density[i] = sum;
-
-    float primeX = (x * cos(0.01)) - (y * sin(0.01));
-    float primeY = (x * sin(0.01)) + (y * cos(0.01));
-
-    
-
-    
+    density[id] = localDensity;
+   
 }
+
+
+__kernel void pressure(__global float3* positions, __global float* density, int particles, __global float* forces)
+{
+    int id = get_global_id(0);
+    float restDensity = 80.0f;
+    float gasConstant = 1.0f;
+    float h = 0.2;
+    float h2 = h * h;
+    float epsilon = 1.0f/100000.0f;
+    float c = 10/(M_PI * h2 * h);
+
+
+    float2 positionI = positions[id].xy;
+    float2 force = (float2)(0.0f, 0.0f);
+    
+    float rhoi = density[id];
+    float pi = gasConstant * (rhoi - restDensity);
+    
+    for(int j = 0; j < particles; j++)
+    {
+        float2 positionJ = positions[j].xy;
+        
+        float delX = positionI.x - positionJ.x;
+        float delY = positionI.y - positionJ.y;
+        float r2 = (delX * delX) + (delY * delY);
+
+        if(r2 <= h2)
+        {
+            float rhoj = density[j];
+            float pj = gasConstant * (density[j] - restDensity);
+            float fraction = (pi + pj)/(2 * rhoj);
+            float r = sqrt(r2);
+            
+            float Gx = (3 * c * delX * (h - r) * (h-r))/(r + epsilon);
+            float Gy = (3 * c * delY * (h - r) * (h-r))/(r + epsilon);
+            
+            
+            force = force + (float2)(Gx * fraction , Gy * fraction);
+
+        }
+
+
+    }
+
+
+    forces[2 * id] = force.x/rhoi;
+    forces[2 * id + 1] = force.y/rhoi;
+
+}
+
+__kernel void updatePositions(__global* float positions, __global* float forces, __global* float velocities)
