@@ -1,11 +1,11 @@
-__kernel void density(__global float* positions, __global float*density, int particles)
+__kernel void density(__global float4* positions, __global float*density, int totalParticles)
 {
 
     int id = get_global_id(0);
-    float h = 0.2f;
+    float h = 0.3f;
 
 
-    float2 positionI = positions[id];
+    float2 positionI = positions[id].xy;
 
     float localDensity = 0.0f;
 
@@ -13,9 +13,9 @@ __kernel void density(__global float* positions, __global float*density, int par
     float h8 = h2 * h2 * h2 * h2;
     float c = 4.0f / (M_PI * h8);
 
-    for(int j = 0; j < particles; j++)
+    for(int j = 0; j < totalParticles; j++)
     {
-        float2 positionJ = positions[j];
+        float2 positionJ = positions[j].xy;
         float delX = positionI.x - positionJ.x;
         float delY = positionI.y - positionJ.y;
         float r2 = (delX * delX) + (delY * delY);
@@ -32,15 +32,16 @@ __kernel void density(__global float* positions, __global float*density, int par
 }
 
 
-__kernel void pressure(__global float3* positions, __global float* density, int particles, __global float* forces)
+__kernel void pressure(__global float4* positions, __global float* density, __global float2* forces, int totalParticles )
 {
     int id = get_global_id(0);
-    float restDensity = 80.0f;
-    float gasConstant = 1.0f;
-    float h = 0.2;
+    float restDensity = 20.0f;
+    float gasConstant = 0.30f;
+    float h = 0.3;
     float h2 = h * h;
     float epsilon = 1.0f/1000.0f;
     float c = 10/(M_PI * h2 * h);
+    float gravity = 0.02f;
 
 
     float2 positionI = positions[id].xy;
@@ -49,7 +50,7 @@ __kernel void pressure(__global float3* positions, __global float* density, int 
     float rhoi = density[id];
     float pi = gasConstant * (rhoi - restDensity);
     
-    for(int j = 0; j < particles; j++)
+    for(int j = 0; j < totalParticles; j++)
     {
         float2 positionJ = positions[j].xy;
         
@@ -75,20 +76,19 @@ __kernel void pressure(__global float3* positions, __global float* density, int 
 
     }
 
-
-    forces[2 * id] = force.x/rhoi;
-    forces[2 * id + 1] = force.y/rhoi;
-
+    force = force/rhoi;
+    force.y = force.y - gravity;
+    forces[id] = force;
 }
 
-__kernel void updatePositions(__global float3* positions, __global float2* forces, __global float2* velocities)
+__kernel void updatePositions(__global float4* positions, __global float2* forces, __global float2* velocities)
 {
     int id = get_global_id(0);
     float delT = 0.02;
     
     float2 force = forces[id];
     float2 velocity = velocities[id];
-    float3 position = positions[id];
+    float4 position = positions[id];
 
     velocity.x = velocity.x + force.x * delT;
     velocity.y = velocity.y + force.y * delT;

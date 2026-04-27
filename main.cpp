@@ -31,8 +31,12 @@ cl_mem velocities;
 GLFWwindow* window;
 
 const int limit = 8;
-const int multiplier = 30;
+const int multiplier = 10;
+const int wallLength = 40;
+const int floorLength = 2 * wallLength;
+const int thickness = 6;
 const int particles = limit * multiplier;
+const int totalParticles = particles + (2 * wallLength * thickness) + (floorLength * thickness);
 
 
 unsigned int VBO;
@@ -83,16 +87,39 @@ int main(){
         return 1;
     }
 
-    cl_float3 vertices[particles] = {};
+    cl_float4 vertices[totalParticles] = {};
 
-    for(int i = 0; i < particles; i++){
-        float x = 2 * (float)std::rand()/RAND_MAX - 1;
-        float y = 2 * (float)std::rand()/RAND_MAX - 1;
+    for(int i = 0; i < totalParticles; i++){
+        float x = 0.7 * (float)std::rand()/RAND_MAX - 0.25f;
+        float y = 0.5 * (float)std::rand()/RAND_MAX - 0.25f;
         
-        vertices[i] = {x,y,0.0f};
+        vertices[i] = {x,y,0.0f, 0.0f};
         
         //std::cout << "The positions are as follows: x| " << vertices[3 * i] << " y| " << vertices[3 * i + 1] << std::endl; 
     } 
+
+    for(int i = 0; i < thickness; i++)
+    {
+        for(int j = 0; j < wallLength; j++)
+        {
+            int offset = particles + (i * wallLength * 2);
+            vertices[j + offset] = {-0.93f - (0.03f * (float)i) , (float)j/wallLength - 0.7f, 0.0f, 0.0f};
+            vertices[j + offset + wallLength] = {0.93f + (0.03f * (float)i), (float)j/wallLength - 0.7f, 0.0f, 0.0f};
+        }
+    }
+
+
+    for(int i = 0; i < thickness; i++)
+    {
+        for(int j = 0; j < floorLength; j++)
+        {
+            int offset = particles + (thickness * wallLength * 2) + (i * floorLength);
+            vertices[j + offset] = {2.0f * (float)j/floorLength - 0.98f, -0.75f - (0.03f * (float)i), 0.0f, 0.0f};
+        }
+    }
+    
+
+
 
 
     //Create Buffer for Vertex Data
@@ -105,7 +132,7 @@ int main(){
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
     glEnable(GL_PROGRAM_POINT_SIZE);
 
@@ -125,13 +152,13 @@ int main(){
         std::cout << "ERROR: Failed to create density buffer!\n" << std::endl;
     }
 
-    forces = clCreateBuffer(context, CL_MEM_READ_WRITE, particles * sizeof(cl_float3), NULL, NULL);
+    forces = clCreateBuffer(context, CL_MEM_READ_WRITE, totalParticles * sizeof(cl_float2), NULL, NULL);
     if(!forces)
     {
         std::cout << "ERROR: Failed to create forces buffer!\n" << std::endl;
     }
     
-    velocities = clCreateBuffer(context, CL_MEM_READ_WRITE, particles * sizeof(cl_float2), NULL, NULL);
+    velocities = clCreateBuffer(context, CL_MEM_READ_WRITE, totalParticles * sizeof(cl_float2), NULL, NULL);
 
 
 
@@ -164,7 +191,7 @@ int main(){
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, particles);
+        glDrawArrays(GL_POINTS, 0, totalParticles);
 
 
     
@@ -172,19 +199,48 @@ int main(){
         glfwPollEvents();
     }
 
-    cl_float2 results[particles];
+    cl_float results[totalParticles];
 
-    err = clEnqueueReadBuffer(commands, forces, CL_TRUE, 0, sizeof(cl_float2) * particles, results, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(commands, density, CL_TRUE, 0, sizeof(cl_float) * totalParticles, results, 0, NULL, NULL);
     if(err != CL_SUCCESS)
     {
         std::cout << "ERROR: Failed to read density!\n";
         return 1;
     }
 
-    for(int i = 0; i < particles; i++)
+    err = clEnqueueAcquireGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
     {
-        //printf("Force: x: %f && y: %f\n", results[i].s[0], results[i].s[1]);
+        printf("ERROR: Failed to aquire GLObjects!\n");
+        return 1;
+    }    
+
+    cl_float4 results2[totalParticles];
+
+    err = clEnqueueReadBuffer(commands, sharedMemory, CL_TRUE, 0, sizeof(cl_float4) * totalParticles, results, 0, NULL, NULL);
+
+        if(err != CL_SUCCESS)
+    {
+        std::cout << "ERROR: Failed to read position!\n";
+        return 1;
     }
+
+    err = clEnqueueReleaseGLObjects(commands, 1, &sharedMemory, 0, NULL, NULL);
+    if(err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to relase gl objects!\n");
+        return 1;
+    }
+
+
+
+    for(int i = 0; i < totalParticles; i++)
+    {
+        //printf("Position: x: %f, y: %f, Density: %f\n", results2[i].s[0], results2[i].s[1], results[i]);
+
+    }
+
+
 
 
 
@@ -376,7 +432,7 @@ int kernel1()
 
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &density);
-    err = clSetKernelArg(kernel, 2, sizeof(cl_int), &particles);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_int), &totalParticles);
 
     if(err != CL_SUCCESS)
     {
@@ -384,7 +440,7 @@ int kernel1()
          return 1;
     }
 
-    const size_t global = particles;
+    const size_t global = totalParticles;
     const size_t local = limit;
 
 
@@ -425,8 +481,9 @@ int kernel2()
 
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &density);
-    err = clSetKernelArg(kernel, 2, sizeof(cl_int), &particles);
-    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &forces);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &forces);
+    err = clSetKernelArg(kernel, 3, sizeof(cl_int), &totalParticles);
+
 
     if(err != CL_SUCCESS)
     {
