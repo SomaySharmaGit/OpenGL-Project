@@ -28,6 +28,8 @@ __kernel void density(__global float4* positions, __global float*density, int to
     }
 
     density[id] = localDensity;
+
+    //printf("For particle %d ... Position X: %f, Position Y: %f\n", id, positionI.x, positionI.y);
    
 }
 

@@ -37,7 +37,7 @@ const int wallLength = 20;
 const int floorLength = 2 * wallLength;
 const int thickness = 12;
 const int particles = stride * lift;
-const int totalParticles = particles + (2 * wallLength * thickness) + (floorLength * thickness);
+const int totalParticles = particles + (2 * wallLength * thickness) + (floorLength * thickness) + 8;
 
 
 unsigned int VBO;
@@ -202,10 +202,28 @@ int main(){
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
 
+       printf("X: %f Y: %f\n", xpos, ypos);
+
+        float xConv = (float)xpos/300 - 1.0f;
+        float yConv = (float)-ypos/300 + 1.0f;
+        float position[4 * 8] = {};
+
+        for(int k = 0; k < 8; k++)
+        {
+            position[k * 4] = xConv;
+            position[k * 4 + 1] = yConv;
+            position[k * 4 + 2] = 0.0f;
+            position[k * 4 + 3] = 0.0f;
+        }
+
+        size_t fl = sizeof(cl_float4);
+
 
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
+        glBufferSubData(GL_ARRAY_BUFFER, (totalParticles - 8) * fl, fl * 8, &position);
+        glFinish();
         glDrawArrays(GL_POINTS, 0, totalParticles);
 
 
@@ -232,7 +250,7 @@ int main(){
 
     cl_float4 results2[totalParticles];
 
-    err = clEnqueueReadBuffer(commands, sharedMemory, CL_TRUE, 0, sizeof(cl_float4) * totalParticles, results, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(commands, sharedMemory, CL_TRUE, 0, sizeof(cl_float4) * totalParticles, results2, 0, NULL, NULL);
 
         if(err != CL_SUCCESS)
     {
@@ -247,11 +265,11 @@ int main(){
         return 1;
     }
 
-
+    clFinish(commands);
 
     for(int i = 0; i < totalParticles; i++)
     {
-        //printf("Position: x: %f, y: %f, Density: %f\n", results2[i].s[0], results2[i].s[1], results[i]);
+       //printf("Position: x: %f, y: %f, Density: %f\n", results2[i].s[0], results2[i].s[1], results[i]);
 
     }
 
