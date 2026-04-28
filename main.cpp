@@ -31,11 +31,12 @@ cl_mem velocities;
 GLFWwindow* window;
 
 const int limit = 8;
-const int multiplier = 10;
-const int wallLength = 40;
+const int stride = 1 * limit;
+const int lift = 2 * limit;
+const int wallLength = 20;
 const int floorLength = 2 * wallLength;
-const int thickness = 6;
-const int particles = limit * multiplier;
+const int thickness = 12;
+const int particles = stride * lift;
 const int totalParticles = particles + (2 * wallLength * thickness) + (floorLength * thickness);
 
 
@@ -69,6 +70,7 @@ void cleanUp();
 int kernel1();
 int kernel2();
 int kernel3();
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
 
 int main(){        
 
@@ -89,15 +91,26 @@ int main(){
 
     cl_float4 vertices[totalParticles] = {};
 
-    for(int i = 0; i < totalParticles; i++){
-        float x = 0.7 * (float)std::rand()/RAND_MAX - 0.25f;
-        float y = 0.5 * (float)std::rand()/RAND_MAX - 0.25f;
-        
-        vertices[i] = {x,y,0.0f, 0.0f};
-        
-        //std::cout << "The positions are as follows: x| " << vertices[3 * i] << " y| " << vertices[3 * i + 1] << std::endl; 
-    } 
+    float sparsityX = 0.9f;
+    float sparsityY = 0.4f;
+    float xInterval = sparsityX/(float)(stride);
+    float yInterval = sparsityY/(float)(lift);
 
+
+    for(int i = 0; i < stride ; i++)
+    {
+        for(int j = 0; j < lift; j++)
+        {
+            int index = (i * lift) + j;
+            float x = i * xInterval - (0.4 * sparsityX);
+            float y = j * yInterval;
+            vertices[index ] = {x,y,0.0f,0.0f};
+            
+        }
+    }
+
+
+    
     for(int i = 0; i < thickness; i++)
     {
         for(int j = 0; j < wallLength; j++)
@@ -114,7 +127,7 @@ int main(){
         for(int j = 0; j < floorLength; j++)
         {
             int offset = particles + (thickness * wallLength * 2) + (i * floorLength);
-            vertices[j + offset] = {2.0f * (float)j/floorLength - 0.98f, -0.75f - (0.03f * (float)i), 0.0f, 0.0f};
+            vertices[j + offset] = {2.0f * (float)j/floorLength - 0.98f, -0.75f - ((0.02f) * (float)i), 0.0f, 0.0f};
         }
     }
     
@@ -186,6 +199,8 @@ int main(){
             return 1;
         }
 
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
 
 
 
@@ -282,6 +297,7 @@ int initOpenGL()
 
     glViewport(0,0,600,600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 
 
     return 0;
@@ -482,7 +498,8 @@ int kernel2()
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sharedMemory);
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &density);
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &forces);
-    err = clSetKernelArg(kernel, 3, sizeof(cl_int), &totalParticles);
+    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &velocities);
+    err = clSetKernelArg(kernel, 4, sizeof(cl_int), &totalParticles);
 
 
     if(err != CL_SUCCESS)
@@ -560,4 +577,8 @@ int kernel3()
     return 0;
 
 
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
 }

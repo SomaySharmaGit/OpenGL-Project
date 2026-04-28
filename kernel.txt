@@ -32,16 +32,16 @@ __kernel void density(__global float4* positions, __global float*density, int to
 }
 
 
-__kernel void pressure(__global float4* positions, __global float* density, __global float2* forces, int totalParticles )
+__kernel void pressure(__global float4* positions, __global float* density, __global float2* forces, __global float2* velocities, int totalParticles )
 {
     int id = get_global_id(0);
-    float restDensity = 20.0f;
+    float restDensity = 50.0f;
     float gasConstant = 0.30f;
     float h = 0.3;
     float h2 = h * h;
     float epsilon = 1.0f/1000.0f;
     float c = 10/(M_PI * h2 * h);
-    float gravity = 0.02f;
+    float gravity = 0.01f;
 
 
     float2 positionI = positions[id].xy;
@@ -75,6 +75,35 @@ __kernel void pressure(__global float4* positions, __global float* density, __gl
 
 
     }
+
+    float mew = 0.01;
+    c = 10 / (3 * M_PI * h2 * h2 * h);
+    float2 vi = velocities[id].xy;
+
+    for(int j = 0; j < totalParticles; j++)
+    {
+        float2 positionJ = positions[id].xy;
+
+        float delX = positionI.x - positionJ.x;
+        float delY = positionI.y - positionJ.y;
+        float r2 = (delX * delX) + (delY * delY);
+
+        if(r2 < h2)
+        {
+            float rhoj = density[j];
+            float2 vj = velocities[j].xy;
+            float dR = (h - sqrt(r2));
+
+            float2 fraction = ((vj - vi)/rhoj) * c * dR;
+            force = force + mew * fraction;
+
+        }
+
+    }
+
+
+
+
 
     force = force/rhoi;
     force.y = force.y - gravity;
