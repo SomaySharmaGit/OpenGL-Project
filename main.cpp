@@ -31,10 +31,10 @@ cl_mem velocities;
 GLFWwindow* window;
 
 const int limit = 8;
-const int stride = 1 * limit;
+const int stride = 4 * limit;
 const int lift = 2 * limit;
-const int wallLength = 20;
-const int floorLength = 2 * wallLength;
+const int wallLength = 40;
+const int floorLength = 4 * wallLength;
 const int thickness = 12;
 const int particles = stride * lift;
 const int totalParticles = particles + (2 * wallLength * thickness) + (floorLength * thickness) + 8;
@@ -91,7 +91,7 @@ int main(){
 
     cl_float4 vertices[totalParticles] = {};
 
-    float sparsityX = 0.9f;
+    float sparsityX = 1.3f;
     float sparsityY = 0.4f;
     float xInterval = sparsityX/(float)(stride);
     float yInterval = sparsityY/(float)(lift);
@@ -104,7 +104,7 @@ int main(){
             int index = (i * lift) + j;
             float x = i * xInterval - (0.4 * sparsityX);
             float y = j * yInterval;
-            vertices[index ] = {x,y,0.0f,0.0f};
+            vertices[index] = {x,y,1.0f,1.0f};
             
         }
     }
@@ -116,7 +116,7 @@ int main(){
         for(int j = 0; j < wallLength; j++)
         {
             int offset = particles + (i * wallLength * 2);
-            vertices[j + offset] = {-0.93f - (0.03f * (float)i) , (float)j/wallLength - 0.7f, 0.0f, 0.0f};
+            vertices[j + offset] = {-0.93f - (0.01f * (float)i) , (float)j/wallLength - 0.7f, 0.0f, 0.0f};
             vertices[j + offset + wallLength] = {0.93f + (0.03f * (float)i), (float)j/wallLength - 0.7f, 0.0f, 0.0f};
         }
     }
@@ -127,7 +127,7 @@ int main(){
         for(int j = 0; j < floorLength; j++)
         {
             int offset = particles + (thickness * wallLength * 2) + (i * floorLength);
-            vertices[j + offset] = {2.0f * (float)j/floorLength - 0.98f, -0.75f - ((0.02f) * (float)i), 0.0f, 0.0f};
+            vertices[j + offset] = {2.0f * (float)j/floorLength - 0.98f, -0.75f - ((0.01f) * (float)i), 0.0f, 0.0f};
         }
     }
     
@@ -143,7 +143,7 @@ int main(){
 
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);

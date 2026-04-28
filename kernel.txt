@@ -2,7 +2,7 @@ __kernel void density(__global float4* positions, __global float*density, int to
 {
 
     int id = get_global_id(0);
-    float h = 0.3f;
+    float h = 0.1f;
 
 
     float2 positionI = positions[id].xy;
@@ -37,13 +37,13 @@ __kernel void density(__global float4* positions, __global float*density, int to
 __kernel void pressure(__global float4* positions, __global float* density, __global float2* forces, __global float2* velocities, int totalParticles )
 {
     int id = get_global_id(0);
-    float restDensity = 50.0f;
-    float gasConstant = 0.30f;
-    float h = 0.3;
+    float restDensity = 30.0f;
+    float gasConstant = 0.80f;
+    float h = 0.1;
     float h2 = h * h;
     float epsilon = 1.0f/1000.0f;
     float c = 10/(M_PI * h2 * h);
-    float gravity = 0.01f;
+    float gravity = 0.007f;
 
 
     float2 positionI = positions[id].xy;
@@ -78,13 +78,13 @@ __kernel void pressure(__global float4* positions, __global float* density, __gl
 
     }
 
-    float mew = 0.01;
+    float mew = 0.5;
     c = 10 / (3 * M_PI * h2 * h2 * h);
     float2 vi = velocities[id].xy;
 
     for(int j = 0; j < totalParticles; j++)
     {
-        float2 positionJ = positions[id].xy;
+        float2 positionJ = positions[j].xy;
 
         float delX = positionI.x - positionJ.x;
         float delY = positionI.y - positionJ.y;
