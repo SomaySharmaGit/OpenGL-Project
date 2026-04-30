@@ -9,8 +9,8 @@ void main()
     gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
     gl_PointSize = 7;
 
-    ourColor = vec3(1.0, 0.0, 0.0);
-    if(aPos.z > 0.0)
+    ourColor = vec3(0.0, 0.5, 0.5);
+    if(aPos.z < 0.5)
     {
         ourColor = vec3(0.55, 0.55, 0.55);
     }

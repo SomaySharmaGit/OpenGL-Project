@@ -30,9 +30,9 @@ cl_mem velocities;
 
 GLFWwindow* window;
 
-const int limit = 8;
-const int stride = 4 * limit;
-const int lift = 2 * limit;
+const int limit = 4;
+const int stride = 8 * limit;
+const int lift = 12* limit;
 const int wallLength = 40;
 const int floorLength = 4 * wallLength;
 const int thickness = 12;
@@ -91,8 +91,8 @@ int main(){
 
     cl_float4 vertices[totalParticles] = {};
 
-    float sparsityX = 1.3f;
-    float sparsityY = 0.4f;
+    float sparsityX = 1.4f;
+    float sparsityY = 1.0f;
     float xInterval = sparsityX/(float)(stride);
     float yInterval = sparsityY/(float)(lift);
 
@@ -102,8 +102,8 @@ int main(){
         for(int j = 0; j < lift; j++)
         {
             int index = (i * lift) + j;
-            float x = i * xInterval - (0.4 * sparsityX);
-            float y = j * yInterval;
+            float x = i * xInterval - (0.5 * sparsityX);
+            float y = j * yInterval -0.5f;
             vertices[index] = {x,y,1.0f,1.0f};
             
         }
@@ -116,8 +116,8 @@ int main(){
         for(int j = 0; j < wallLength; j++)
         {
             int offset = particles + (i * wallLength * 2);
-            vertices[j + offset] = {-0.93f - (0.01f * (float)i) , (float)j/wallLength - 0.7f, 0.0f, 0.0f};
-            vertices[j + offset + wallLength] = {0.93f + (0.03f * (float)i), (float)j/wallLength - 0.7f, 0.0f, 0.0f};
+            vertices[j + offset] = {-0.93f - (0.01f * (float)i) , (float)j/wallLength - 0.8f, 0.0f, 0.0f};
+            vertices[j + offset + wallLength] = {0.93f + (0.03f * (float)i), (float)j/wallLength - 0.8f, 0.0f, 0.0f};
         }
     }
 
@@ -214,6 +214,13 @@ int main(){
             position[k * 4 + 1] = yConv;
             position[k * 4 + 2] = 0.0f;
             position[k * 4 + 3] = 0.0f;
+
+
+            if(k >= 7)
+            {
+            position[k * 4] = 1000.0f;
+            position[k * 4 + 1] = 1000.0f;
+            }
         }
 
         size_t fl = sizeof(cl_float4);
